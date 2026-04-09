@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>회계처리 핵심 패턴 — Accrual Basis</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #F7F3EC;
+    --ink: #1A1612;
+    --ink-light: #4A4440;
+    --ink-faint: #8A837E;
+    --rule: #C8BDB5;
+    --rule-light: #E4DDD8;
+
+    --c1: #2A5C45;  /* green */
+    --c2: #B8860B;  /* amber */
+    --c3: #1B4A7A;  /* blue */
+    --c4: #5B2D8E;  /* purple */
+    --c5: #7A3B1E;  /* orange */
+    --c6: #8B1A1A;  /* red */
+    --c7: #2C2C2C;  /* black */
+    --c8: #4A3728;  /* brown */
+
+    --acc-bg: #FDFAF6;
+    --acc-head: #EDE6DC;
+    --acc-dr: #EBF4EE;
+    --acc-cr: #FFF8E8;
+    --acc-border: #C8BDB5;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Serif KR', serif;
+    background: #D9D0C5;
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+
+  /* ── PAPER ── */
+  .paper {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--cream);
+    box-shadow:
+      0 2px 4px rgba(0,0,0,.08),
+      0 8px 32px rgba(0,0,0,.12),
+      0 24px 64px rgba(0,0,0,.08);
+    border-top: 4px solid var(--ink);
+  }
+
+  /* ── HEADER ── */
+  .doc-header {
+    padding: 56px 64px 40px;
+    border-bottom: 2px solid var(--ink);
+    position: relative;
+  }
+  .doc-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .12em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .doc-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 38px;
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .doc-subtitle {
+    font-size: 14px;
+    color: var(--ink-light);
+    letter-spacing: .04em;
+  }
+  .principle-box {
+    margin-top: 32px;
+    padding: 18px 24px;
+    background: var(--ink);
+    color: var(--cream);
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .03em;
+  }
+  .principle-box .fire { font-size: 20px; }
+
+  /* ── BODY ── */
+  .doc-body {
+    padding: 0 64px 64px;
+  }
+
+  /* ── CASE BLOCK ── */
+  .case-block {
+    margin-top: 48px;
+    border-left: 3px solid var(--ink);
+    padding-left: 24px;
+  }
+  .case-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .case-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    min-width: 64px;
+  }
+  .case-emoji { font-size: 18px; }
+  .case-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: .01em;
+  }
+  .case-tag {
+    margin-left: auto;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 3px 9px;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  /* ── JOURNAL ENTRY TABLE ── */
+  .journal-wrap {
+    background: var(--acc-bg);
+    border: 1px solid var(--acc-border);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .journal-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+  }
+  .journal-table thead tr {
+    background: var(--acc-head);
+  }
+  .journal-table thead th {
+    padding: 8px 14px;
+    text-align: left;
+    font-size: 9px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    font-weight: 500;
+    border-bottom: 1px solid var(--acc-border);
+  }
+  .journal-table th:last-child,
+  .journal-table td:last-child { text-align: right; }
+  .journal-table th:nth-child(3),
+  .journal-table td:nth-child(3) { text-align: right; }
+
+  .journal-table tr.dr-row { background: var(--acc-dr); }
+  .journal-table tr.cr-row { background: var(--acc-cr); }
+  .journal-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--rule-light);
+  }
+  .journal-table td.account-name { font-weight: 500; color: var(--ink); }
+  .journal-table td.cr-indent { padding-left: 32px; }
+  .journal-table td.amount { color: var(--ink-light); }
+  .dr-badge, .cr-badge {
+    display: inline-block;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    letter-spacing: .08em;
+    font-weight: 600;
+    margin-right: 6px;
+  }
+  .dr-badge { background: #D4EDDA; color: #1A5C2C; }
+  .cr-badge { background: #FFF3CD; color: #7A5C00; }
+  .journal-note {
+    background: var(--acc-head);
+    padding: 6px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-faint);
+    border-top: 1px solid var(--acc-border);
+    letter-spacing: .04em;
+  }
+
+  /* ── IMPACT GRID ── */
+  .impact-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin-bottom: 18px;
+  }
+  .impact-cell {
+    background: var(--cream);
+    padding: 12px 16px;
+  }
+  .impact-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 4px;
+  }
+  .impact-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .impact-value.up { color: #8B1A1A; }
+  .impact-value.down { color: #2A5C45; }
+  .impact-value.none { color: var(--ink-faint); font-weight: 400; font-style: italic; }
+
+  /* ── REAL EXAMPLE ── */
+  .real-example {
+    background: #F0EBE2;
+    border-left: 3px solid var(--rule);
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+  .real-example-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+  .real-example p {
+    font-size: 13px;
+    color: var(--ink-light);
+    line-height: 1.7;
+  }
+  .real-example strong { color: var(--ink); font-weight: 600; }
+
+  /* ── COMMENT ── */
+  .case-comment {
+    font-size: 13px;
+    color: var(--ink-faint);
+    font-style: italic;
+    border-top: 1px dashed var(--rule);
+    padding-top: 14px;
+    margin-top: 4px;
+  }
+  .case-comment::before { content: '💬  '; }
+
+  /* ── DIVIDER ── */
+  .section-divider {
+    margin: 56px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .section-divider-line { flex: 1; height: 1px; background: var(--ink); }
+  .section-divider-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+
+  /* ── SUMMARY ── */
+  .summary-section {
+    margin-top: 48px;
+    border: 2px solid var(--ink);
+    padding: 36px 40px;
+  }
+  .summary-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 28px;
+    color: var(--ink);
+  }
+  .summary-tree {
+    display: grid;
+    gap: 12px;
+  }
+  .tree-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 12px 16px;
+    background: var(--acc-bg);
+    border-left: 3px solid var(--rule);
+    font-size: 13px;
+  }
+  .tree-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-faint);
+    min-width: 20px;
+  }
+  .tree-q { font-weight: 600; color: var(--ink); }
+  .tree-a { color: var(--ink-light); }
+  .tree-arrow {
+    margin: 0 6px;
+    color: var(--ink-faint);
+  }
+
+  /* ── FINAL SUMMARY BOX ── */
+  .final-box {
+    margin-top: 32px;
+    background: var(--ink);
+    color: var(--cream);
+    padding: 28px 32px;
+  }
+  .final-box-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: rgba(247,243,236,.5);
+    margin-bottom: 14px;
+  }
+  .final-box p {
+    font-size: 14px;
+    line-height: 1.9;
+  }
+  .final-box strong { color: #F5D87A; }
+
+  /* ── FOOTER ── */
+  .doc-footer {
+    padding: 20px 64px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .doc-footer-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--ink-faint);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+
+  /* ── ARO SPECIAL ── */
+  .aro-phases {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .aro-phase-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 6px 14px 0;
+    background: var(--acc-bg);
+    border: 1px solid var(--acc-border);
+    border-bottom: none;
+  }
+
+  /* ── ACCURACY BADGE ── */
+  .accuracy-banner {
+    margin: 40px 0 0;
+    padding: 14px 20px;
+    background: #EBF4EE;
+    border: 1px solid #A8D5B0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--c1);
+  }
+  .accuracy-banner strong { font-weight: 700; }
+
+  @media print {
+    body { background: white; padding: 0; }
+    .paper { box-shadow: none; max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="paper">
+
+  <!-- HEADER -->
+  <div class="doc-header">
+    <div class="doc-meta">Financial Accounting · Accrual Basis · 회계처리 핵심 패턴</div>
+    <div class="doc-title">발생주의 회계처리<br>8가지 핵심 패턴</div>
+    <div class="doc-subtitle">Journal Entry · Financial Statement Impact · Real-World Examples</div>
+    <div class="principle-box">
+      <span>핵심 원칙: 서비스·가치 기준으로 먼저 판단 → 현금 흐름은 그 다음 문제</span>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="doc-body">
+
+    <!-- ──────── CASE 1 ──────── -->
+    <div class="case-block" style="border-color: var(--c1);">
+      <div class="case-header">
+        <span class="case-label">Case 01</span>
+        <span class="case-emoji">🟢</span>
+        <span class="case-title">서비스 수령 + 즉시 현금 지급</span>
+        <span class="case-tag" style="color: var(--c1);">Cash Expense</span>
+      </div>
+
+      <div class="journal-wrap">
+        <table class="journal-table">
+          <thead><tr>
+            <th style="width:60px;">구분</th>
+            <th>계정과목</th>
+            <th style="width:120px;">차변 (Dr.)</th>
+            <th style="width:120px;">대변 (Cr.)</th>
+          </tr></thead>
+          <tbody>
+            <tr class="dr-row">
+              <td><span class="dr-badge">DR</span></td>
+              <td class="account-name">Expense (비용)</td>
+              <td class="amount">XXX</td>
+              <td class="amount">—</td>
+            </tr>
+            <tr class="cr-row">
+              <td><span class="cr-badge">CR</span></td>
+              <td class="account-name cr-indent">Cash (현금)</td>
+              <td class="amount">—</td>
+              <td class="amount">XXX</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="journal-note">서비스 이용 시점 = 비용 인식 시점 = 현금 지출 시점 → 세 가지 동시 발생</div>
+      </div>
+
+      <div class="impact-grid">
+        <div class="impact-cell">
+          <div class="impact-label">Income Statement</div>
+          <div class="impact-value up">Expense ↑</div>
+        </div>
+        <div class="impact-cell">
+          <div class="impact-label">Balance Sheet</div>
+          <div class="impact-value down">Cash ↓</div>
+        </div>
+        <div class="impact-cell">
+          <div class="impact-label">Cash Flow (OCF)</div>
+          <div class="impact-value down">OCF ↓</div>
+        </div>
+      </div>
+
+      <div class="real-example">
+        <div class="real-example-label">실제 사례 — 스타트업 법인카드 결제</div>
+        <p>개발팀이 <strong>AWS 클라우드 서버 비용 ₩3,200,000</strong>을 법인카드로 즉시 결제.<br>
+        Dr. Cloud Service Expense <strong>3,200,000</strong> / Cr. Cash (법인카드계정) <strong>3,200,000</strong><br>
+        → 해당 월 서버를 실제로 사용했으므로 즉시 비용 처리. 카드 결제일과 사용일이 같은 달이면 단순하게 이 분개 하나로 끝.</p>
+      </div>
+
+      <div class="case-comment">먹고 바로 계산함. 가장 단순한 형태.</div>
+    </div>
+
+    <!-- ──────── CASE 2 ──────── -->
+    <div class="case-block" style="border-color: var(--c2);">
+      <div class="case-header">
+        <span class="case-label">Case 02</span>
+        <span class="case-emoji">🟡</span>
+        <span class="case-title">서비스 수령 + 미지급 (Accrued Expense)</span>
+        <span class="case-tag" style="color: var(--c2);">Accrual</span>
+      </div>
+
+      <div class="journal-wrap">
+        <table class="journal-table">
+          <thead><tr><th style="width:60px;">구분</th><th>계정과목</th><th style="width:120px;">차변 (Dr.)</th><th style="width:120px;">대변 (Cr.)</th></tr></thead>
+          <tbody>
+            <tr class="dr-row">
+              <td><span class="dr-badge">DR</span></td>
+              <td class="account-name">Expense (비용)</td>
+              <td class="amount">XXX</td>
+              <td class="amount">—</td>
+            </tr>
+            <tr class="cr-row">
+              <td><span class="cr-badge">CR</span></td>
+              <td class="account-name cr-indent">Accrued Payable (미지급비용)</td>
+              <td class="amount">—</td>
+              <td class="amount">XXX</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="journal-note">현금은 아직 나가지 않았지만 서비스를 이미 받았으므로 비용은 당기 인식 (발생주의의 핵심)</div>
+      </div>
+
+      <div class="impact-grid">
+        <div class="impact-cell"><div class="impact-label">Income Statement</div><div class="impact-value up">Expense ↑</div></div>
+        <div class="impact-cell"><div class="impact-label">Balance Sheet</div><div class="impact-value up">Liability ↑</div></div>
+        <div class="impact-cell"><div class="impact-label">Cash Flow (OCF)</div><div class="impact-value none">영향 없음</div></div>
+      </div>
+
+      <div class="real-example">
+        <div class="real-example-label">실제 사례 — 급여 미지급 (12월 결산)</div>
+        <p>12월 31일 결산일 기준, 직원들이 12월에 일했지만 급여 <strong>₩28,000,000</strong>은 다음 달 1월 10일에 지급 예정.<br>
+        Dr. Salary Expense <strong>28,000,000</strong> / Cr. Accrued Salaries Payable <strong>28,000,000</strong><br>
+        → 12월 일한 것은 12월 비용. 현금은 1월에 나가지만 IS에는 12월에 반영. OCF는 1월 지급 시점에 감소.</p>
+      </div>
+
+      <div class="case-comment">먹튀 상태. 빚이 생겼고 나중에 갚아야 한다.</div>
+    </div>
+
+    <!-- ──────── CASE 3 ──────── -->
+    <div class="case-block" style="border-color: var(--c3);">
+      <div class="case-header">
+        <span class="case-label">Case 03</span>
+        <span class="case-emoji">🔵</span>
+        <span class="case-title">미지급 부채 상환 (Payment of Payable)</span>
+        <span class="case-tag" style="color: var(--c3);">Settlement</span>
+      </div>
+
+      <div class="journal-wrap">
+        <table class="journal-table">
+          <thead><tr><th style="width:60px;">구분</th><th>계정과목</th><th style="width:120px;">차변 (Dr.)</th><th style="width:120px;">대변 (Cr.)</th></tr></thead>
+          <tbody>
+            <tr class="dr-row">
+              <td><span class="dr-badge">DR</span></td>
+              <td class="account-name">Accrued Payable (미지급비용)</td>
+              <td class="amount">XXX</td>
+              <td class="amount">—</td>
+            </tr>
+            <tr class="cr-row">
+              <td><span class="cr-badge">CR</span></td>
+              <td class="account-name cr-indent">Cash (현금)</td>
+              <td class="amount">—</td>
+              <td class="amount">XXX</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="journal-note">비용은 Case 2에서 이미 인식됨 → 여기서는 부채 청산만. IS에 재중복 계상 금지.</div>
+      </div>
+
+      <div class="impact-grid">
+        <div class="impact-cell"><div class="impact-label">Income Statement</div><div class="impact-value none">영향 없음</div></div>
+        <div class="impact-cell"><div class="impact-label">Balance Sheet</div><div class="impact-value down">Liability ↓  /  Cash ↓</div></div>
+        <div class="impact-cell"><div class="impact-label">Cash Flow (OCF)</div><div class="impact-value down">OCF ↓</div></div>
+      </div>
+
+      <div class="real-example">
+        <div class="real-example-label">실제 사례 — 1월에 12월 급여 지급</div>
+        <p>Case 2에서 계상한 미지급급여 <strong>₩28,000,000</strong>을 1월 10일 계좌 이체로 지급.<br>
+        Dr. Accrued Salaries Payable <strong>28,000,000</strong> / Cr. Cash <strong>28,000,000</strong><br>
+        → 급여 비용은 절대 다시 잡지 않는다. 단지 B/S의 부채 항목 소거 + 현금 감소. 현금흐름표에서는 이 시점에 OCF outflow.</p>
+      </div>
+
+      <div class="case-comment">예전에 먹은 거 이제 계산함. 이미 비용 처리했으니 비용은 없다.</div>
+    </div>
+
+    <!-- ──────── CASE 4 ──────── -->
+    <div class="case-block" style="border-color: var(--c4);">
+      <div class="case-header">
+        <span class="case-label">Case 04</span>
+        <span class="case-emoji">🟣</span>
+        <span class="case-title">선급비용 — 돈 먼저, 서비스는 나중 (Prepaid Expense)</span>
+        <span class="case-tag" style="color: var(--c4);">Prepaid Asset</span>
+      </div>
+
+      <div class="journal-wrap">
+        <table class="journal-table">
+          <thead><tr><th style="width:60px;">구분</th><th>계정과목</th><th style="width:120px;">차변 (Dr.)</th><th style="width:120px;">대변 (Cr.)</th></tr></thead>
+          <tbody>
+            <tr class="dr-row">
+              <td><span class="dr-badge">DR</span></td>
+              <td class="account-name">Prepaid Expense (선급비용 / 자산)</td>
+              <td class="amount">XXX</td>
+              <td class="amount">—</td>
+            </tr>
+            <tr class="cr-row">
+              <td><span class="cr-badge">CR</span></td>
+              <td class="account-name cr-indent">Cash (현금)</td>
+              <td class="amount">—</td>
+              <td class="amount">XXX</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="journal-note">서비스를 아직 받지 않음 → 비용 아님, 미래 서비스 청구권인 자산. B/S에서 현금 → 선급자산으로 이동.</div>
+      </div>
+
+      <div class="impact-grid">
+        <div class="impact-cell"><div class="impact-label">Income Statement</div><div class="impact-value none">영향 없음</div></div>
+        <div class="impact-cell"><div class="impact-label">Balance Sheet</div><div class="impact-value">Cash ↓  /  Prepaid ↑</div></div>
+        <div class="impact-cell"><div class="impact-label">Cash Flow (OCF)</div><div class="impact-value down">OCF ↓</div></div>
+      </div>
+
+      <div class="real-example">
+        <div class="real-example-label">실제 사례 — 1년치 사무실 임차료 선납</div>
+        <p>1월 1일에 사무실 임차료 <strong>₩24,000,000</strong>(월 ₩2,000,000 × 12개월)을 연간 선납.<br>
+        Dr. Prepaid Rent <strong>24,000,000</strong> / Cr. Cash <strong>24,000,000</strong><br>
+        → 아직 1월 공간도 쓰지 않은 상태. 24백만원 전부 자산. CF statement에서는 이 시점에 OCF outflow ₩24M 발생.</p>
+      </div>
+
+      <div class="case-comment">아직 안 먹었는데 밥값 먼저 냄 → 이용권(자산)을 들고 있는 상태.</div>
+    </div>
+
+    <!-- ──────── CASE 5 ──────── -->
+    <div class="case-block" style="border-color: var(--c5);">
+      <div class="case-header">
+        <span class="case-label">Case 05</span>
+        <span class="case-emoji">🟠</span>
+        <span class="case-title">선급비용 소진 — 서비스 수령 시 비용 인식</span>
+        <span class="case-tag" style="color: var(--c5);">Prepaid → Expense</span>
+      </div>
+
+      <div class="journal-wrap">
+        <table class="journal-table">
+          <thead><tr><th style="width:60px;">구분</th><th>계정과목</th><th style="width:120px;">차변 (Dr.)</th><th style="width:120px;">대변 (Cr.)</th></tr></thead>
+          <tbody>
+            <tr class="dr-row">
+              <td><span class="dr-badge">DR</span></td>
+              <td class="account-name">Rent Expense (임차료비용)</td>
+              <td class="amount">XXX</td>
+              <td class="amount">—</td>
+            </tr>
+            <tr class="cr-row">
+              <td><span class="cr-badge">CR</span></td>
+              <td class="account-name cr-indent">Prepaid Expense (선급비용)</td>
+              <td class="amount">—</td>
+              <td class="amount">XXX</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="journal-note">매월 말 조정분개(Adjusting Entry)로 처리. 현금 이동 없음 → OCF 영향 없음.</div>
+      </div>
+
+      <div class="impact-grid">
+        <div class="impact-cell"><div class="impact-label">Income Statement</div><div class="impact-value up">Expense ↑</div></div>
+        <div class="impact-cell"><div class="impact-label">Balance Sheet</div><div class="impact-value down">Prepaid Asset ↓</div></div>
+        <div class="impact-cell"><div class="impact-label">Cash Flow (OCF)</div><div class="impact-value none">영향 없음</div></div>
+      </div>
+
+      <div class="real-example">
+        <div class="real-example-label">실제 사례 — 월별 임차료 비용 인식 (Case 4 연속)</div>
+        <p>1월 말, 사무실을 한 달간 실제로 사용했으므로 <strong>₩2,000,000</strong> 비용 인식.<br>
+        Dr. Rent Expense <strong>2,000,000</strong> / Cr. Prepaid Rent <strong>2,000,000</strong><br>
+        → 이 분개를 12개월 반복하면 선급임차료 ₩24M이 전부 소진되고 매월 IS에 ₩2M씩 비용 인식. 현금은 Case 4에서 이미 나갔으므로 추가 CF 없음.</p>
+      </div>
+
+      <div class="case-comment">이용권을 꺼내 쓰는 중. 매달 쓸 때마다 비용 발생.</div>
+    </div>
+
+    <!-- ──────── CASE 6 ──────── -->
+    <div class="case-block" style="border-color: var(--c6);">
+      <div class="case-header">
+        <span class="case-label">Case 06</span>
+        <span class="case-emoji">🔴</span>
+        <span class="case-title">충당부채 설정 (Provision / Contingent Liability)</span>
+        <span class="case-tag" style="color: var(--c6);">Provision</span>
+      </div>
+
+      <div class="journal-wrap">
+        <table class="journal-table">
+          <thead><tr><th style="width:60px;">구분</th><th>계정과목</th><th style="width:120px;">차변 (Dr.)</th><th style="width:120px;">대변 (Cr.)</th></tr></thead>
+          <tbody>
+            <tr class="dr-row">
+              <td><span class="dr-badge">DR</span></td>
+              <td class="account-name">Expense (비용 / 예: Warranty Expense)</td>
+              <td class="amount">XXX</td>
+              <td class="amount">—</td>
+            </tr>
+            <tr class="cr-row">
+              <td><span class="cr-badge">CR</span></td>
+              <td class="account-name cr-indent">Provision (충당부채)</td>
+              <td class="amount">—</td>
+              <td class="amount">XXX</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="journal-note">Matching principle: 제품 판매 당기에 미래 보증 비용도 함께 인식. IFRS IAS 37 / ASC 450 기준.</div>
+      </div>
+
+      <div class="impact-grid">
+        <div class="impact-cell"><div class="impact-label">Income Statement</div><div class="impact-value up">Expense ↑</div></div>
+        <div class="impact-cell"><div class="impact-label">Balance Sheet</div><div class="impact-value up">Liability ↑</div></div>
+        <div class="impact-cell"><div class="impact-label">Cash Flow (OCF)</div><div class="impact-value none">영향 없음</div></div>
+      </div>
+
+      <div class="real-example">
+        <div class="real-example-label">실제 사례 — 가전제품 1년 무상 A/S 보증충당부채</div>
+        <p>삼성전자가 1분기에 에어컨 10,000대 판매. 과거 이력상 판매량의 약 2%가 보증기간 내 수리 청구되며 대당 평균 수리비 <strong>₩50,000</strong> 예상.<br>
+        예상 보증비용: 10,000대 × 2% × ₩50,000 = <strong>₩10,000,000</strong><br>
+        Dr. Warranty Expense <strong>10,000,000</strong> / Cr. Warranty Provision <strong>10,000,000</strong><br>
+        → 아직 AS 요청 0건이지만 판매한 당기에 비용 선인식. 현금은 나중에 실제 수리 시 지출.</p>
+      </div>
+
+      <div class="case-comment">아직 안 썼는데 법적·상업적 책임이 생겼으니 미리 비용 맞는다.</div>
+    </div>
+
+    <!-- ──────── CASE 7 ──────── -->
+    <div class="case-block" style="border-color: var(--c7);">
+      <div class="case-header">
+        <span class="case-label">Case 07</span>
+        <span class="case-emoji">⚫</span>
+        <span class="case-title">충당부채 실제 지급 (Provision Utilized)</span>
+        <span class="case-tag" style="color: var(--c7);">Utilization</span>
+      </div>
+
+      <div class="journal-wrap">
+        <table class="journal-table">
+          <thead><tr><th style="width:60px;">구분</th><th>계정과목</th><th style="width:120px;">차변 (Dr.)</th><th style="width:120px;">대변 (Cr.)</th></tr></thead>
+          <tbody>
+            <tr class="dr-row">
+              <td><span class="dr-badge">DR</span></td>
+              <td class="account-name">Warranty Provision (충당부채)</td>
+              <td class="amount">XXX</td>
+              <td class="amount">—</td>
+            </tr>
+            <tr class="cr-row">
+              <td><span class="cr-badge">CR</span></td>
+              <td class="account-name cr-indent">Cash (현금)</td>
+              <td class="amount">—</td>
+              <td class="amount">XXX</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="journal-note">비용은 Case 6에서 이미 인식됨. 여기서는 부채 소거 + 현금 지출만. 비용 이중 계상 절대 금지.</div>
+      </div>
+
+      <div class="impact-grid">
+        <div class="impact-cell"><div class="impact-label">Income Statement</div><div class="impact-value none">영향 없음</div></div>
+        <div class="impact-cell"><div class="impact-label">Balance Sheet</div><div class="impact-value down">Liability ↓  /  Cash ↓</div></div>
+        <div class="impact-cell"><div class="impact-label">Cash Flow (OCF)</div><div class="impact-value down">OCF ↓</div></div>
+      </div>
+
+      <div class="real-example">
+        <div class="real-example-label">실제 사례 — 보증 수리 실제 발생 (Case 6 연속)</div>
+        <p>3분기에 고객 AS 요청이 들어와 실제 수리 비용 <strong>₩3,500,000</strong> 현금 지출.<br>
+        Dr. Warranty Provision <strong>3,500,000</strong> / Cr. Cash <strong>3,500,000</strong><br>
+        → 비용은 이미 1분기에 반영했으므로 3분기 IS 영향 없음. Provision 잔액 ₩10M → ₩6.5M으로 감소. 실제 지출이 추정치와 다르면 차액을 해당 기에 비용/이익으로 조정.</p>
+      </div>
+
+      <div class="case-comment">예측했던 사고가 실제로 터짐. 비용은 터진 시점 아니라 예측한 시점에 이미 맞았다.</div>
+    </div>
+
+    <!-- ──────── CASE 8 ──────── -->
+    <div class="case-block" style="border-color: var(--c8);">
+      <div class="case-header">
+        <span class="case-label">Case 08</span>
+        <span class="case-emoji">🟤</span>
+        <span class="case-title">자산 철거 의무 — ARO (Asset Retirement Obligation)</span>
+        <span class="case-tag" style="color: var(--c8);">ARO · IFRS IAS 16/37</span>
+      </div>
+
+      <div class="aro-phases">
+        <div>
+          <div class="aro-phase-label">Phase 1 — 최초 인식 (자산 취득 시점)</div>
+          <div class="journal-wrap" style="margin-bottom:0;">
+            <table class="journal-table">
+              <thead><tr><th style="width:60px;">구분</th><th>계정과목</th><th style="width:100px;">차변</th><th style="width:100px;">대변</th></tr></thead>
+              <tbody>
+                <tr class="dr-row"><td><span class="dr-badge">DR</span></td><td class="account-name">PPE — Asset Cost</td><td class="amount">XXX</td><td class="amount">—</td></tr>
+                <tr class="cr-row"><td><span class="cr-badge">CR</span></td><td class="account-name cr-indent">ARO Liability</td><td class="amount">—</td><td class="amount">XXX</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <div class="aro-phase-label">Phase 2a — 매기 감가상각</div>
+          <div class="journal-wrap" style="margin-bottom:0;">
+            <table class="journal-table">
+              <thead><tr><th style="width:60px;">구분</th><th>계정과목</th><th style="width:100px;">차변</th><th style="width:100px;">대변</th></tr></thead>
+              <tbody>
+                <tr class="dr-row"><td><span class="dr-badge">DR</span></td><td class="account-name">Depreciation Exp.</td><td class="amount">XXX</td><td class="amount">—</td></tr>
+                <tr class="cr-row"><td><span class="cr-badge">CR</span></td><td class="account-name cr-indent">Acc. Depreciation</td><td class="amount">—</td><td class="amount">XXX</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="journal-wrap">
+        <table class="journal-table">
+          <thead><tr><th style="width:60px;">구분</th><th>계정과목</th><th style="width:120px;">차변 (Dr.)</th><th style="width:120px;">대변 (Cr.)</th></tr></thead>
+          <tbody>
+            <tr class="dr-row"><td><span class="dr-badge">DR</span></td><td class="account-name">Phase 2b — Interest Expense (ARO unwinding)</td><td class="amount">XXX</td><td class="amount">—</td></tr>
+            <tr class="cr-row"><td><span class="cr-badge">CR</span></td><td class="account-name cr-indent">ARO Liability (이자 해제)</td><td class="amount">—</td><td class="amount">XXX</td></tr>
+          </tbody>
+        </table>
+        <div class="journal-note">ARO는 현재가치(PV)로 최초 인식 후 매기 할인율 적용하여 이자비용으로 unwinding. 자산에 ARO 금액 더해 감가상각 기준 상승.</div>
+      </div>
+
+      <div class="impact-grid">
+        <div class="impact-cell"><div class="impact-label">최초 인식 (IS)</div><div class="impact-value none">영향 없음</div></div>
+        <div class="impact-cell"><div class="impact-label">최초 인식 (BS)</div><div class="impact-value up">Asset ↑  /  Liability ↑</div></div>
+        <div class="impact-cell"><div class="impact-label">매기 (IS)</div><div class="impact-value up">Dep. ↑  /  Interest ↑</div></div>
+      </div>
+
+      <div class="real-example">
+        <div class="real-example-label">실제 사례 — 해상 석유 시추 플랫폼 (예: POSCO인터내셔널)</div>
+        <p>해상 가스전 개발을 위해 시추 플랫폼 설치. 취득원가 <strong>$50,000,000</strong>. 20년 후 철거 의무 현재가치 <strong>$3,000,000</strong> (할인율 4%).<br>
+        <strong>취득 시:</strong> Dr. PPE <strong>53,000,000</strong> / Cr. Cash <strong>50,000,000</strong> + ARO Liability <strong>3,000,000</strong><br>
+        <strong>매년:</strong> Depreciation (ARO 포함 53M 기준), 그리고 ARO Liability에 이자 unwinding $3M × 4% = $120,000씩 추가.<br>
+        → 자산에 숨겨진 미래 의무를 지금부터 나눠서 부담. 천천히 맞는 비용.</p>
+      </div>
+
+      <div class="case-comment">자산에 숨겨진 의무 → 자산 원가에 얹어 천천히 나눠 맞는다. 이자도 매년 맞는다.</div>
+    </div>
+
+    <!-- ──────── SUMMARY ──────── -->
+    <div class="section-divider">
+      <div class="section-divider-line"></div>
+      <div class="section-divider-text">Decision Framework</div>
+      <div class="section-divider-line"></div>
+    </div>
+
+    <div class="summary-section">
+      <div class="summary-title">⚡ 판단 트리 — 5단계로 분개 결정</div>
+      <div class="summary-tree">
+
+        <div class="tree-row" style="border-left-color: var(--c1);">
+          <span class="tree-num">1️⃣</span>
+          <span><span class="tree-q">서비스를 받았는가?</span> <span class="tree-arrow">→</span> <span class="tree-a">YES → Expense 발생 (Dr. Expense). 아직 안 받았으면 비용 아님.</span></span>
+        </div>
+
+        <div class="tree-row" style="border-left-color: var(--c2);">
+          <span class="tree-num">2️⃣</span>
+          <span><span class="tree-q">현금을 냈는가?</span> <span class="tree-arrow">→</span> <span class="tree-a">냈다 → Cr. Cash (CASE 1) / 안 냈다 → Cr. Payable (CASE 2). 나중에 갚으면 Dr. Payable / Cr. Cash (CASE 3).</span></span>
+        </div>
+
+        <div class="tree-row" style="border-left-color: var(--c4);">
+          <span class="tree-num">3️⃣</span>
+          <span><span class="tree-q">서비스 안 받았는데 현금 먼저 냈는가?</span> <span class="tree-arrow">→</span> <span class="tree-a">→ Prepaid Expense (자산). 나중에 쓸수록 CASE 5로 비용 전환.</span></span>
+        </div>
+
+        <div class="tree-row" style="border-left-color: var(--c6);">
+          <span class="tree-num">4️⃣</span>
+          <span><span class="tree-q">서비스 안 받았는데 의무(책임)만 생겼는가?</span> <span class="tree-arrow">→</span> <span class="tree-a">→ Provision 설정 (CASE 6). 현금 지출 시 CASE 7.</span></span>
+        </div>
+
+        <div class="tree-row" style="border-left-color: var(--c8);">
+          <span class="tree-num">5️⃣</span>
+          <span><span class="tree-q">그 의무가 자산을 보유하기 때문에 생긴 것인가?</span> <span class="tree-arrow">→</span> <span class="tree-a">→ ARO: 자산원가에 얹고 Liability 인식 (CASE 8). 매기 Dep. + Interest unwinding.</span></span>
+        </div>
+
+      </div>
+
+      <div class="final-box">
+        <div class="final-box-label">One-Line Compression</div>
+        <p>
+          <strong>받으면 비용</strong>, 안 냈으면 <strong>부채</strong>, 먼저 냈으면 <strong>자산</strong> —<br>
+          책임 때문에 생긴 의무면 <strong>Provision</strong>,<br>
+          자산 때문에 생긴 의무면 <strong>ARO</strong>.
+        </p>
+      </div>
+    </div>
+
+  </div><!-- /doc-body -->
+
+  <!-- FOOTER -->
+  <div class="doc-footer">
+    <div class="doc-footer-text">Accrual Basis · IFRS / US GAAP</div>
+    <div class="doc-footer-text">Cases 1–8 Verified ✓</div>
+    <div class="doc-footer-text">2026</div>
+  </div>
+
+</div><!-- /paper -->
+</body>
+</html>
