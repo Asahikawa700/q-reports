@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reports</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper:   #f0e8d5;
+      --paper-2: #e8dfc8;
+      --paper-3: #d0c4aa;
+      --ink:     #1e160a;
+      --ink-2:   #4a3828;
+      --ink-3:   #8a7055;
+      --stamp:   #8b2020;
+      --stamp-light: #f5eaea;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Libre Baskerville", "Palatino Linotype", Georgia, serif;
+      background-color: #b8ad96;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.22'/%3E%3C/svg%3E");
+      min-height: 100vh;
+      padding: 52px 24px 80px;
+      color: var(--ink);
+    }
+
+    .wrap { max-width: 880px; margin: 0 auto; }
+
+    .header-sheet {
+      background: var(--paper);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.68' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.09'/%3E%3C/svg%3E");
+      border: 1px solid var(--paper-3);
+      border-top: 4px solid var(--stamp);
+      border-radius: 2px;
+      padding: 32px 40px 28px;
+      margin-bottom: 28px;
+      box-shadow: 2px 4px 16px rgba(0,0,0,0.20), 0 0 0 1px rgba(0,0,0,0.04);
+    }
+
+    .eyebrow {
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-family: "IM Fell English", "Palatino Linotype", Georgia, serif;
+      font-size: clamp(26px, 3.8vw, 40px);
+      font-weight: 400;
+      color: var(--ink);
+      line-height: 1.1;
+    }
+
+    .rule {
+      border: none;
+      border-top: 1px solid var(--paper-3);
+      border-bottom: 1px solid rgba(255,255,255,0.55);
+      margin: 18px 0;
+    }
+
+    .meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    #path-display {
+      font-size: 12px;
+      color: var(--ink-3);
+      font-style: italic;
+    }
+
+    #count-badge {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--stamp);
+      background: var(--stamp-light);
+      border: 1px solid rgba(139,32,32,0.18);
+      border-radius: 2px;
+      padding: 3px 9px;
+      display: none;
+    }
+
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+      gap: 16px;
+    }
+
+    .state-box {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 52px 0;
+      color: var(--ink-3);
+      font-size: 14px;
+      font-style: italic;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid var(--paper-3);
+      border-top-color: var(--ink-3);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .doc-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      background: var(--paper);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.74' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.09'/%3E%3C/svg%3E");
+      border: 1px solid var(--paper-3);
+      border-radius: 2px;
+      min-height: 185px;
+      text-decoration: none;
+      color: inherit;
+      overflow: hidden;
+      cursor: pointer;
+      box-shadow: 1px 2px 8px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.03);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .doc-card:hover {
+      transform: translateY(-4px) rotate(0.4deg);
+      box-shadow: 3px 10px 22px rgba(0,0,0,0.24), 0 0 0 1px rgba(0,0,0,0.05);
+    }
+
+    .doc-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; right: 0;
+      width: 20px; height: 20px;
+      background: linear-gradient(225deg, var(--paper-3) 50%, rgba(255,255,255,0.3) 50%);
+      border-top: 1px solid var(--paper-3);
+      border-left: 1px solid var(--paper-3);
+    }
+
+    .doc-lines {
+      height: 7px;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent 0, transparent 4px,
+        rgba(0,0,0,0.055) 4px, rgba(0,0,0,0.055) 5px
+      );
+      border-bottom: 1px solid var(--paper-3);
+      flex-shrink: 0;
+    }
+
+    .doc-body {
+      flex: 1;
+      padding: 16px 16px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .doc-icon {
+      width: 28px; height: 34px;
+      flex-shrink: 0;
+      opacity: 0.75;
+    }
+
+    .doc-name {
+      font-family: "IM Fell English", Georgia, serif;
+      font-size: 15px;
+      font-weight: 400;
+      line-height: 1.35;
+      color: var(--ink);
+      flex: 1;
+      word-break: break-word;
+    }
+
+    .doc-tag {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      border: 1px solid var(--paper-3);
+      border-radius: 1px;
+      padding: 2px 6px;
+      width: fit-content;
+    }
+
+    .error-box {
+      grid-column: 1 / -1;
+      background: #fdf4f4;
+      border: 1px solid rgba(139,32,32,0.2);
+      border-left: 3px solid var(--stamp);
+      border-radius: 2px;
+      padding: 18px 22px;
+      font-size: 13px;
+      color: var(--ink-2);
+      line-height: 1.7;
+    }
+    .error-box strong { color: var(--stamp); }
+    .error-box code {
+      background: rgba(0,0,0,0.06);
+      padding: 1px 5px;
+      border-radius: 2px;
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    .footer {
+      margin-top: 28px;
+      text-align: right;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--ink-3);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header-sheet">
+      <div class="eyebrow">Report Navigator</div>
+      <h1>보고서 선택</h1>
+      <hr class="rule" />
+      <div class="meta-row">
+        <span id="path-display">보고서를 불러오는 중…</span>
+        <span id="count-badge"></span>
+      </div>
+    </div>
+
+    <div id="grid">
+      <div class="state-box"><span class="spinner"></span>불러오는 중…</div>
+    </div>
+
+    <div class="footer">Q Reports Navigator</div>
+  </div>
+
+  <script>
+    (async () => {
+      const grid        = document.getElementById('grid');
+      const pathDisplay = document.getElementById('path-display');
+      const countBadge  = document.getElementById('count-badge');
+
+      /* ── URL에서 GitHub owner / repo / dirPath 파싱 ──────────────
+         케이스 A (project site):
+           https://username.github.io/repo-name/fillings/
+           owner = username, repo = repo-name, dirPath = fillings
+
+         케이스 B (user site):
+           https://username.github.io/fillings/
+           owner = username, repo = username.github.io, dirPath = fillings
+      ────────────────────────────────────────────────────────────── */
+      const { hostname, pathname } = window.location;
+
+      const hostMatch = hostname.match(/^([^.]+)\.github\.io$/i);
+      if (!hostMatch) {
+        showError('GitHub Pages 환경(*.github.io)에서만 동작합니다.');
+        return;
+      }
+      const owner = hostMatch[1];
+
+      // pathname 분해: 맨 앞 슬래시 제거, 마지막 .html 파일 제거
+      const parts = pathname.replace(/^\//, '').replace(/\/+$/, '').split('/').filter(Boolean);
+      if (parts.length && parts[parts.length - 1].toLowerCase().endsWith('.html')) {
+        parts.pop();
+      }
+
+      let repo, dirPath;
+      if (parts.length === 0) {
+        repo    = `${owner}.github.io`;
+        dirPath = '';
+      } else {
+        // 첫 번째 세그먼트가 레포명인지 user-site 경로인지 판단:
+        // GitHub.io user-site는 레포가 {owner}.github.io → parts[0]은 실제 폴더
+        // project-site는 parts[0]이 repo명
+        // → GitHub API로 두 경우를 모두 시도
+        repo    = parts[0];
+        dirPath = parts.slice(1).join('/');
+      }
+
+      // GitHub Contents API
+      const contentsPath = dirPath ? `contents/${dirPath}` : 'contents';
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/${contentsPath}`;
+
+      pathDisplay.textContent = `${owner}/${repo}${dirPath ? '/' + dirPath : ''}`;
+
+      let items;
+      try {
+        const res = await fetch(apiUrl, {
+          headers: { Accept: 'application/vnd.github.v3+json' }
+        });
+
+        if (!res.ok) {
+          // project-site 실패 시 user-site로 재시도
+          if (res.status === 404 && parts.length >= 1) {
+            const altRepo    = `${owner}.github.io`;
+            const altDirPath = parts.join('/');
+            const altUrl     = `https://api.github.com/repos/${owner}/${altRepo}/contents/${altDirPath}`;
+            pathDisplay.textContent = `${owner}/${altRepo}/${altDirPath}`;
+            const res2 = await fetch(altUrl, {
+              headers: { Accept: 'application/vnd.github.v3+json' }
+            });
+            if (!res2.ok) {
+              showError(
+                res2.status === 404
+                  ? '경로를 찾을 수 없습니다. 레포가 <strong>Public</strong>인지 확인하세요.'
+                  : `API 오류 (${res2.status})`,
+                altUrl
+              );
+              return;
+            }
+            items = await res2.json();
+          } else {
+            showError(
+              res.status === 403
+                ? 'API 요청 한도를 초과했습니다 (403). 잠시 후 다시 시도하세요.'
+                : `API 오류 (${res.status})`,
+              apiUrl
+            );
+            return;
+          }
+        } else {
+          items = await res.json();
+        }
+      } catch (e) {
+        showError('네트워크 오류: ' + e.message, apiUrl);
+        return;
+      }
+
+      // index.html 제외하고 .html만 필터
+      const reports = items
+        .filter(f =>
+          f.type === 'file' &&
+          f.name.toLowerCase().endsWith('.html') &&
+          f.name.toLowerCase() !== 'index.html'
+        )
+        .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+
+      if (reports.length === 0) {
+        grid.innerHTML = `<div class="state-box">이 폴더에 HTML 보고서가 없습니다.</div>`;
+        pathDisplay.textContent = pathDisplay.textContent + ' — 0개';
+        return;
+      }
+
+      countBadge.textContent = `${reports.length}개 보고서`;
+      countBadge.style.display = 'inline-block';
+      grid.innerHTML = '';
+
+      for (const file of reports) {
+        const stem = file.name.replace(/\.html$/i, '');
+        // 현재 페이지와 같은 경로에서 파일명만 바꿔 링크
+        const base = window.location.href.replace(/[^/]*$/, '');
+        const href = base + file.name;
+
+        const card = document.createElement('a');
+        card.className = 'doc-card';
+        card.href = href;
+        card.setAttribute('aria-label', stem);
+        card.innerHTML = `
+          <div class="doc-lines"></div>
+          <div class="doc-body">
+            <svg class="doc-icon" viewBox="0 0 28 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2 2h16l8 8v22H2V2z" fill="#e8dfc8" stroke="#c0b49a" stroke-width="1"/>
+              <path d="M18 2l8 8H18V2z" fill="#d0c2a4" stroke="#c0b49a" stroke-width="1"/>
+              <line x1="6" y1="16" x2="22" y2="16" stroke="#c0b49a" stroke-width="0.8"/>
+              <line x1="6" y1="20" x2="22" y2="20" stroke="#c0b49a" stroke-width="0.8"/>
+              <line x1="6" y1="24" x2="16" y2="24" stroke="#c0b49a" stroke-width="0.8"/>
+            </svg>
+            <div class="doc-name">${esc(stem)}</div>
+            <div class="doc-tag">HTML</div>
+          </div>
+        `;
+        grid.appendChild(card);
+      }
+    })();
+
+    function showError(msg, url) {
+      document.getElementById('grid').innerHTML =
+        `<div class="error-box"><strong>오류</strong> — ${msg}${url ? `<br><br>요청 URL: <code>${esc(url)}</code>` : ''}</div>`;
+      document.getElementById('path-display').textContent = '불러오기 실패';
+    }
+
+    function esc(s) {
+      return String(s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+  </script>
+</body>
+</html>
